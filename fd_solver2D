@@ -1,9 +1,10 @@
-#imports
+#FD solver for 2D domains
 import numpy as np
 import scipy.sparse
 from scipy.sparse.linalg import spsolve
 import matplotlib.pyplot as plt
 
+#Prints fd_solve solution as colour map
 def print_solution(X,Y,S):
     index = 0
     C =  np.empty((len(X), len(Y)))
@@ -16,8 +17,16 @@ def print_solution(X,Y,S):
     plt.colorbar()
     plt.show()
 
+#indexing for FD_solve
 def get_index(i,j,n):
     return int(i+j*n)
+
+#Solves laplace equation
+#Input:
+#nx, ny - indexes of boundary
+#bc - boundary conditions - ['direction', 'dirichlet bc value', 'neumann bc value']
+#                           't','b','l','r'; 'set '-' if neumann'; 'set '-' if dirichlet' 
+#h - mesh width
 
 def FD_solve(nx,ny,bc,h):
     X, Y = np.meshgrid(np.arange(0, 1, h), np.arange(0, 1, h))
