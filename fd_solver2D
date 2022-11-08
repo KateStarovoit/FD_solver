@@ -4,7 +4,6 @@ import scipy.sparse
 from scipy.sparse.linalg import spsolve
 import matplotlib.pyplot as plt
 
-#Prints fd_solve solution as colour map
 def print_solution(X,Y,S):
     index = 0
     C =  np.empty((len(X), len(Y)))
@@ -17,24 +16,16 @@ def print_solution(X,Y,S):
     plt.colorbar()
     plt.show()
 
-#indexing for FD_solve
 def get_index(i,j,n):
     return int(i+j*n)
-
-#Solves laplace equation
-#Input:
-#nx, ny - indexes of boundary
-#bc - boundary conditions - ['direction', 'dirichlet bc value', 'neumann bc value']
-#                           't','b','l','r'; 'set '-' if neumann'; 'set '-' if dirichlet' 
-#h - mesh width
 
 def FD_solve(nx,ny,bc,h):
     X, Y = np.meshgrid(np.arange(0, 1, h), np.arange(0, 1, h))
     
-    L = np.empty((len(X)*len(Y), len(X)*len(Y)))
-    U = np.zeros(len(X)*len(Y))
-       
-    #constructing L and U
+    L = scipy.sparse.lil_matrix((len(X)*len(Y), len(X)*len(Y)), dtype = np.float)
+    U = scipy.sparse.lil_matrix((len(X)*len(Y), 1), dtype = np.float)
+
+   #constructing L and U
     for i in range(0, len(X)):
         for j in range(0, len(Y)):   
             mid_index = get_index(i,j,1/h)
@@ -42,47 +33,48 @@ def FD_solve(nx,ny,bc,h):
             left_index = get_index(i-1,j,1/h)
             bottom_index = get_index(i,j-1,1/h)
             top_index = get_index(i,j+1,1/h)
-            L[mid_index] = np.zeros(len(L))
-            L[mid_index] = np.zeros(len(L))
-            L[mid_index][mid_index] = -4
+            
+            L[(mid_index,mid_index)] = -4
             
             if (i+1) < len(X):
-                    L[mid_index][right_index] = 1
+                    L[(mid_index,right_index)] = 1
             if i > 0:
-                    L[mid_index][left_index] = 1
+                    L[(mid_index,left_index)] = 1
             if j > 0:
-                    L[mid_index][bottom_index] = 1
+                    L[(mid_index,bottom_index)] = 1
             if (j+1) < len(Y):
-                    L[mid_index][top_index] = 1
-
-    #applying bc
+                    L[(mid_index,top_index)] = 1
+                    
+        #applying bc
     for index in range(0, len(nx)):
         i = nx[index]
         j = ny[index]
-        mid_index = int(get_index(i,j,1/h))
+        mid_index = get_index(i,j,1/h)
         right_index = get_index(i+1,j,1/h)
         left_index = get_index(i-1,j,1/h)
         bottom_index = get_index(i,j-1,1/h)
         top_index = get_index(i,j+1,1/h)
-        
+
         if bc[index][0] == 't' and (j+1) < len(Y):
-            L[mid_index][top_index] -= 1
+            L[(mid_index,top_index)] -= 1
         elif bc[index][0] == 'b' and j > 0:
-            L[mid_index][bottom_index] -= 1
+            L[(mid_index,bottom_index)] -= 1
         elif bc[index][0] == 'r' and i > 0:
-            L[mid_index][right_index] -= 1
+            print("r")
+            L[(mid_index,right_index)] -= 1
         elif bc[index][0] == 'l' and (i+1) < len(X):
-            L[mid_index][left_index] -= 1
-        
-        
+            print("l")
+            L[(mid_index,left_index)] -= 1
+
+
         if bc[index][1] != '-':
-            U[mid_index] += bc[index][1]
+            U[(mid_index,0)] += bc[index][1]
         else:
-            L[mid_index][mid_index] += 1
-            U[mid_index] += bc[index][2]  
-          
-    sol = spsolve(scipy.sparse.csc_matrix(L),-U)
+            L[(mid_index,mid_index)] += 1
+            U[(mid_index,0)] += bc[index][2]  
             
+    sol = spsolve(scipy.sparse.csc_matrix(L),-U)
+    
     #Print Solution
     print_solution(X,Y,sol)
     return sol
