@@ -4,6 +4,24 @@ import scipy.sparse
 from scipy.sparse.linalg import spsolve
 import matplotlib.pyplot as plt
 
+#returns grid cell indexes for a point
+def point_to_grid(x,y,h):
+    return [round(x/h,0), round(y/h,0)]
+
+def mesh_to_grid(V, E, h):
+    #V list of vertices
+    #E list of edge indexes
+    #h - grid width
+    #output - list of grid indexes
+    X = []
+    Y = []
+    for edge in E:
+        for v in edge:
+            indexes = point_to_grid(V[v][0], V[v][1], h)
+            X.append(indexes[0])
+            Y.append(indexes[1])
+    return X, Y
+
 #Prints fd_solve solution as colour map
 def print_solution(X,Y,S):
     index = 0
