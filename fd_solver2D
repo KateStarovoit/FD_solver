@@ -1,13 +1,15 @@
 #FD solver for 2D domains
 import numpy as np
 import scipy.sparse
+from scipy.sparse import csr_matrix, lil_matrix
+import scipy.sparse.linalg
 from scipy.sparse.linalg import spsolve
 import matplotlib.pyplot as plt
 
 #returns grid cell indexes for a point
 def point_to_grid(x,y,h):
     return [round(x/h,0), round(y/h,0)]
-
+s
 def mesh_to_grid(V, E, h):
     #V list of vertices
     #E list of edge indexes
@@ -39,8 +41,14 @@ def print_solution(X,Y,S):
 def get_index(i,j,n):
     return int(i+j*n)
 
+#returns mid, right, left, bottom and top indexes for i,j cell
+#h - grid width
+def get_cell_indexes(i,j,h):
+     return  get_index(i,j,1/h), get_index(i+1,j,1/h), get_index(i-1,j,1/h), get_index(i,j-1,1/h), get_index(i,j+1,1/h)
+    
 #Solves laplace equation
-def FD_solve(nx,ny,bc,h):
+def FD_solve(V,E,bc,h):
+    nx, ny = FD_compute(V, E, bc, h)
     X, Y = np.meshgrid(np.arange(0, 1, h), np.arange(0, 1, h))
     
     L = scipy.sparse.lil_matrix((len(X)*len(Y), len(X)*len(Y)), dtype = np.float)
@@ -48,15 +56,9 @@ def FD_solve(nx,ny,bc,h):
 
    #constructing L and U
     for i in range(0, len(X)):
-        for j in range(0, len(Y)):   
-            mid_index = get_index(i,j,1/h)
-            right_index = get_index(i+1,j,1/h)
-            left_index = get_index(i-1,j,1/h)
-            bottom_index = get_index(i,j-1,1/h)
-            top_index = get_index(i,j+1,1/h)
-            
+        for j in range(0, len(Y)):
+            mid_index, right_index, left_index, bottom_index, top_index = get_cell_indexes(i,j,h)  
             L[(mid_index,mid_index)] = -4
-            
             if (i+1) < len(X):
                     L[(mid_index,right_index)] = 1
             if i > 0:
@@ -66,16 +68,13 @@ def FD_solve(nx,ny,bc,h):
             if (j+1) < len(Y):
                     L[(mid_index,top_index)] = 1
                     
-        #applying bc
+    #Applying bc
     for index in range(0, len(nx)):
         i = nx[index]
         j = ny[index]
-        mid_index = get_index(i,j,1/h)
-        right_index = get_index(i+1,j,1/h)
-        left_index = get_index(i-1,j,1/h)
-        bottom_index = get_index(i,j-1,1/h)
-        top_index = get_index(i,j+1,1/h)
+        mid_index, right_index, left_index, bottom_index, top_index = get_cell_indexes(i,j,h)  
 
+        #Cell laplacian
         if bc[index][0] == 't' and (j+1) < len(Y):
             L[(mid_index,top_index)] -= 1
         elif bc[index][0] == 'b' and j > 0:
@@ -87,7 +86,7 @@ def FD_solve(nx,ny,bc,h):
             print("l")
             L[(mid_index,left_index)] -= 1
 
-
+        #Neumann or Dirichlet bc fpr cell middle
         if bc[index][1] != '-':
             U[(mid_index,0)] += bc[index][1]
         else:
@@ -99,3 +98,6 @@ def FD_solve(nx,ny,bc,h):
     #Print Solution
     print_solution(X,Y,sol)
     return sol
+
+def FD_compute(V, E, bc, h):
+    return mesh_to_grid(V,E,h)
