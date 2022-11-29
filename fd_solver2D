@@ -1,229 +1,33 @@
 #FD solver for 2D domains
 import numpy as np
+import igl
+import os
 import scipy.sparse
 from scipy.sparse import csr_matrix, lil_matrix
 import scipy.sparse.linalg
 from scipy.sparse.linalg import spsolve
 import matplotlib.pyplot as plt
+import copy
 
-#returns grid cell indexes for a point
-def point_to_grid(x,y,h):
-    return [round(x/h,0), round(y/h,0)]
-#returns grid cell indexes for a point
-def point_to_grid(x,y,h):
-    return [round(x/h,0), round(y/h,0)]
+#Creates a regular grid with width h
+#Outputs X, Y - (x2-x1)/h * (y2-y1)/h arrays of x, y coordinates
+def create_grid(x1, x2, y1, y2, h):
+    return np.meshgrid(np.arange(x1, x2, h), np.arange(y1, y2, h))
 
-def mesh_to_grid(V, E, h):
-    #V list of vertices
-    #E list of edge indexes
-    #h - grid width
-    #output - list of grid indexes
-    X = []
-    Y = []
-    for edge in E:
-        for v in edge:
-            indexes = point_to_grid(V[v][0], V[v][1], h)
-            X.append(indexes[0])
-            Y.append(indexes[1])
-    return X, Y
-
-#Prints fd_solve solution as colour map
-def print_solution(X,Y,S):
-    index = 0
-    C =  np.empty((len(X), len(Y)))
-    for i in range(0, len(C)):
-        for j in range(0, len(C)):
-            C[i][j] = S[index]
-            index += 1
-    fig, ax = plt.subplots()
-    plt.scatter(X, Y, c = C, s = 15, marker = 's')
-    plt.colorbar()
-    plt.show()
-
-#prints edges
-def print_edges(V, E, bc):
-    fig, ax = plt.subplots()
-    for i in range(0, len(E)):
-        v1 = V[E[i][0]]
-        v2 = V[E[i][1]]
-        x = [v1[0], v2[0]]
-        y = [v1[1], v2[1]]
-        if bc[i][1] != "-":
-            plt.plot(x,y, color = 'green')
-        else:
-            plt.plot(x,y, color = 'red')    
-    plt.show()
-
-#indexing for FD_solve
+#Returns a flat index. h - 1/width
 def get_index(i,j,n):
     return int(i+j*n)
 
-#returns mid, right, left, bottom and top indexes for i,j cell
-#h - grid width
 def get_cell_indexes(i,j,h):
      return  get_index(i,j,1/h), get_index(i+1,j,1/h), get_index(i-1,j,1/h), get_index(i,j-1,1/h), get_index(i,j+1,1/h)
-    
-#Solves laplace equation
-def FD_solve(V,E,bc,h):
-    nx, ny = FD_compute(V, E, bc, h)
-    X, Y = np.meshgrid(np.arange(0, 1, h), np.arange(0, 1, h))
-    
-    L = scipy.sparse.lil_matrix((len(X)*len(Y), len(X)*len(Y)), dtype = np.float)
-    U = scipy.sparse.lil_matrix((len(X)*len(Y), 1), dtype = np.float)
 
-   #constructing L and U
-    for i in range(0, len(X)):
-        for j in range(0, len(X[0])):
-            mid_index, right_index, left_index, bottom_index, top_index = get_cell_indexes(i,j,h)  
-            L[(mid_index,mid_index)] = -4
-            if (i+1) < len(X):
-                    L[(mid_index,right_index)] = 1
-            if i > 0:
-                    L[(mid_index,left_index)] = 1
-            if j > 0:
-                    L[(mid_index,bottom_index)] = 1
-            if (j+1) < len(Y):
-                    L[(mid_index,top_index)] = 1
-                    
-    #Applying bc
-    for index in range(0, len(nx)):
-        i = nx[index]
-        j = ny[index]
-        mid_index, right_index, left_index, bottom_index, top_index = get_cell_indexes(i,j,h)  
+def get_index2(i,j,n):
+    return int(i+2*j*n)
 
-        #Cell laplacian
-        if bc[index][0] == 't' and (j+1) < len(Y):
-            L[(mid_index,top_index)] -= 1
-        elif bc[index][0] == 'b' and j > 0:
-            L[(mid_index,bottom_index)] -= 1
-        elif bc[index][0] == 'r' and i > 0:
-            print("r")
-            L[(mid_index,right_index)] -= 1
-        elif bc[index][0] == 'l' and (i+1) < len(X):
-            print("l")
-            L[(mid_index,left_index)] -= 1
+def get_cell_indexes2(i,j,h):
+     return  get_index2(i,j,1/h), get_index2(i+1,j,1/h), get_index2(i-1,j,1/h), get_index2(i,j-1,1/h), get_index2(i,j+1,1/h)), get_index2(i,j+1,1/h)
 
-        #Neumann or Dirichlet bc fpr cell middle
-        if bc[index][1] != '-':
-            U[(mid_index,0)] += bc[index][1]
-        else:
-            L[(mid_index,mid_index)] += 1
-            U[(mid_index,0)] += bc[index][2]  
-            
-    sol = spsolve(scipy.sparse.csc_matrix(L),-U)
-    
-    #Print Solution
-    print_solution(X,Y,sol)
-    return sol
-
-def FD_compute(V, E, bc, h):
-    return mesh_to_grid(V,E,h)
-def mesh_to_grid(V, E, h):
-    #V list of vertices
-    #E list of edge indexes
-    #h - grid width
-    #output - list of grid indexes
-    X = []
-    Y = []
-    for edge in E:
-        for v in edge:
-            indexes = point_to_grid(V[v][0], V[v][1], h)
-            X.append(indexes[0])
-            Y.append(indexes[1])
-    return X, Y
-
-#Prints fd_solve solution as colour map
-def print_solution(X,Y,S):
-    index = 0
-    C =  np.empty((len(X), len(Y)))
-    for i in range(0, len(C)):
-        for j in range(0, len(C)):
-            C[i][j] = S[index]
-            index += 1
-    fig, ax = plt.subplots()
-    plt.scatter(X, Y, c = C, s = 15, marker = 's')
-    plt.colorbar()
-    plt.show()
-
-#prints edges
-def print_edges(V, E, bc):
-    fig, ax = plt.subplots()
-    for i in range(0, len(E)):
-        v1 = V[E[i][0]]
-        v2 = V[E[i][1]]
-        x = [v1[0], v2[0]]
-        y = [v1[1], v2[1]]
-        if bc[i][1] != "-":
-            plt.plot(x,y, color = 'green')
-        else:
-            plt.plot(x,y, color = 'red')    
-    plt.show()
-
-#indexing for FD_solve
-def get_index(i,j,n):
-    return int(i+j*n)
-
-#returns mid, right, left, bottom and top indexes for i,j cell
-#h - grid width
-def get_cell_indexes(i,j,h):
-     return  get_index(i,j,1/h), get_index(i+1,j,1/h), get_index(i-1,j,1/h), get_index(i,j-1,1/h), get_index(i,j+1,1/h)
-    
-#Solves laplace equation
-def FD_solve(V,E,bc,h):
-    nx, ny = FD_compute(V, E, bc, h)
-    X, Y = np.meshgrid(np.arange(0, 1, h), np.arange(0, 1, h))
-    
-    L = scipy.sparse.lil_matrix((len(X)*len(Y), len(X)*len(Y)), dtype = np.float)
-    U = scipy.sparse.lil_matrix((len(X)*len(Y), 1), dtype = np.float)
-
-   #constructing L and U
-    for i in range(0, len(X)):
-        for j in range(0, len(X[0])):
-            mid_index, right_index, left_index, bottom_index, top_index = get_cell_indexes(i,j,h)  
-            L[(mid_index,mid_index)] = -4
-            if (i+1) < len(X):
-                    L[(mid_index,right_index)] = 1
-            if i > 0:
-                    L[(mid_index,left_index)] = 1
-            if j > 0:
-                    L[(mid_index,bottom_index)] = 1
-            if (j+1) < len(Y):
-                    L[(mid_index,top_index)] = 1
-                    
-    #Applying bc
-    for index in range(0, len(nx)):
-        i = nx[index]
-        j = ny[index]
-        mid_index, right_index, left_index, bottom_index, top_index = get_cell_indexes(i,j,h)  
-
-        #Cell laplacian
-        if bc[index][0] == 't' and (j+1) < len(Y):
-            L[(mid_index,top_index)] -= 1
-        elif bc[index][0] == 'b' and j > 0:
-            L[(mid_index,bottom_index)] -= 1
-        elif bc[index][0] == 'r' and i > 0:
-            print("r")
-            L[(mid_index,right_index)] -= 1
-        elif bc[index][0] == 'l' and (i+1) < len(X):
-            print("l")
-            L[(mid_index,left_index)] -= 1
-
-        #Neumann or Dirichlet bc fpr cell middle
-        if bc[index][1] != '-':
-            U[(mid_index,0)] += bc[index][1]
-        else:
-            L[(mid_index,mid_index)] += 1
-            U[(mid_index,0)] += bc[index][2]  
-            
-    sol = spsolve(scipy.sparse.csc_matrix(L),-U)
-    
-    #Print Solution
-    print_solution(X,Y,sol)
-    return sol
-
-def FD_compute(V, E, bc, h):
-    return mesh_to_grid(V,E,h)
-
+#Creates a box around shape
 def bounding_box(P, h):
     p1 = point_to_grid(P[0][0],P[0][1],h)
     Outline = [[p1[0]*h,p1[1]*h]]
@@ -250,15 +54,15 @@ def bounding_box(P, h):
     Outline.append(Outline[0])
     return Outline
 
+#returns 2 separate arrays instead of [x, y]
+def points_to_arrays(points):
+    X, Y = [], []
+    for elem in points:
+        X.append(elem[0])
+        Y.append(elem[1])
+    return X, Y
 
-def print_outline(Outline):
-    X_ = []
-    Y_ = []
-    for elem in Outline:
-        X_.append(elem[0])
-        Y_.append(elem[1])
-    return X_, Y_
-
+#Winding number
 def _is_right_side(p, strt, end):
     x, y, x0, y0, x1, y1 = *p, *strt, *end
     return (x1 - x0) * (y - y0) - (y1 - y0) * (x - x0)
@@ -283,3 +87,98 @@ def winding_num(pnts, poly):
     for p in pnts:
         w.append(cal_w(p, poly))
     return w
+
+#Outputs boundary points and conditions
+def create_boundary(V, E, x1, x2, y1, y2, h):
+    #Get grid
+    X, Y = create_grid(x1, x2, y1, y2, h)
+    WN, poly = [], []
+    for i in range(len(E)):
+        poly.append([V[E[i]][0][0], V[E[i]][0][1]])
+        poly.append([V[E[i]][1][0], V[E[i]][1][1]])
+        
+    for i in range(len(X)):
+        for j in range(len(X[0])):
+            p = [[X[i][j], Y[i][j]]]
+            WN.append(winding_num(p,np.array(poly)))
+   
+    boundary_points, boundary_conditions  = [], []
+    for i in range(len(X)):
+        for j in range(len(X[0])):
+            mid_index, right_index, left_index, bottom_index, top_index = get_cell_indexes2(i,j,h)
+            if (i+1) < len(X) and WN[mid_index][0] != 0 and WN[right_index][0] == 0:
+                boundary_points.append([X[j][i+1], Y[j][i+1]])
+                boundary_conditions.append(['r', 1, '-'])
+            if i > 0 and WN[mid_index][0] != 0 and WN[left_index][0] == 0:
+                boundary_points.append([X[j][i-1], Y[j][i-1]])
+                boundary_conditions.append(['l', 1, '-'])
+            if j > 0 and WN[mid_index][0] != 0 and WN[bottom_index][0] == 0:
+                boundary_points.append([X[j-1][i], Y[j-1][i]])
+                boundary_conditions.append(['b', 1, '-'])
+            if (j+1) < len(Y) and WN[mid_index][0] != 0 and WN[top_index][0] == 0:
+                boundary_points.append([X[j+1][i+1], Y[j+1][i]])
+                boundary_conditions.append(['b', 1, '-'])  
+    return boundary_points, boundary_conditions
+
+#Finite difference solver
+def FD_solve2(b_points, bc, h):
+    nx, ny = points_to_arrays(b_points)
+    X, Y = np.meshgrid(np.arange(-1, 1, h), np.arange(-1, 1, h))
+    
+    L = scipy.sparse.lil_matrix((len(X)*len(Y), len(X)*len(Y)), dtype = np.float)
+    U = scipy.sparse.lil_matrix((len(X)*len(Y), 1), dtype = np.float)
+
+   #constructing L and U
+    for i in range(0, len(X)):
+        for j in range(0, len(X[0])):
+            mid_index, right_index, left_index, bottom_index, top_index = get_cell_indexes2(i,j,h)  
+            L[(mid_index,mid_index)] = -4
+            if (i+1) < len(X):
+                    L[(mid_index,right_index)] = 1
+            if i > 0:
+                    L[(mid_index,left_index)] = 1
+            if j > 0:
+                    L[(mid_index,bottom_index)] = 1
+            if (j+1) < len(Y):
+                    L[(mid_index,top_index)] = 1
+                    
+    #Applying bc
+    for index in range(0, len(nx)):
+        i = nx[index]
+        j = ny[index]
+        mid_index, right_index, left_index, bottom_index, top_index = get_cell_indexes2(i,j,h)  
+
+        #Cell laplacian
+        if bc[index][0] == 't' and (j+1) < len(Y):
+            L[(mid_index,top_index)] -= 1
+        elif bc[index][0] == 'b' and j > 0:
+            L[(mid_index,bottom_index)] -= 1
+        elif bc[index][0] == 'r' and i > 0:
+            L[(mid_index,right_index)] -= 1
+        elif bc[index][0] == 'l' and (i+1) < len(X):
+            L[(mid_index,left_index)] -= 1
+
+        #Neumann or Dirichlet bc fpr cell middle
+        if bc[index][1] != '-':
+            U[(mid_index,0)] += bc[index][1]
+        else:
+            L[(mid_index,mid_index)] += 1
+            U[(mid_index,0)] += bc[index][2]  
+            
+    sol = spsolve(scipy.sparse.csc_matrix(L),-U)
+    
+    #Print Solution
+    print_solution(X,Y,sol)
+    return sol
+
+def print_solution(X,Y,S):
+    index = 0
+    C =  np.empty((len(X), len(Y)))
+    for i in range(0, len(C)):
+        for j in range(0, len(C)):
+            C[i][j] = S[index]
+            index += 1
+    fig, ax = plt.subplots()
+    plt.scatter(X, Y, c = C, s = 15, marker = 's')
+    plt.colorbar()
+    plt.show()
