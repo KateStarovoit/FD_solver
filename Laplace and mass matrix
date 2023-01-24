@@ -39,10 +39,12 @@ def find_cot(a, b, c, Ai):
     cota = (- a * a + b * b + c * c) / Ai
     cotb = (- b * b + a * a + c * c) / Ai
     cotc = (- c * c + a * a + b * b) / Ai
-    return cota, cotb, cotc
+    return cota/4, cotb/4, cotc/4
 
 #cot matrix
-def l_grad(l, A, f):
+def l_grad(v, f):
+    l = igl.edge_lengths(v,f)
+    A = igl.doublearea(v,f)
     cot =  np.zeros((len(l),3))
     for i in range(len(l)):
         cota, cotb, cotc = find_cot(l[i][0], l[i][1], l[i][2], A[i])
