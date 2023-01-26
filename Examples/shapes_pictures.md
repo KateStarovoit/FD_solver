@@ -18,6 +18,14 @@ solution for b = -10 for top and bottom boundaries
 
 mesh
 
+![image](https://user-images.githubusercontent.com/52281733/214949682-2b4d6edd-3258-408d-9fc4-558d95632359.png)
+
+b = 100 for v6
+
+![image](https://user-images.githubusercontent.com/52281733/214949520-e7904ae6-70ed-4b35-ae8d-a90ffc16677c.png)
+
+b = -10 for v0, v2, v10, v12
+b = 10 for v5, v7
 
 ## Example 3
 ![image](https://user-images.githubusercontent.com/52281733/214948347-fba25688-35aa-4c1e-b224-d83bd185f4fa.png)
