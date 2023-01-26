@@ -1,0 +1,16 @@
+import polyscope as ps
+root_folder = os.getcwd()
+
+v,f = igl.read_triangle_mesh(os.path.join(root_folder, "data", "flag1.obj"))
+L = igl.cotmatrix(v,f)
+M = igl.massmatrix(v,f)
+b = np.zeros(len(v))
+
+#Set b = 10 for upper boundary
+b[2] = 10
+b[5] = 10
+b[8] = 10
+
+#Solution to Lu = Mb
+sol = spsolve(M,L*b)
+plot(v,f, sol)
