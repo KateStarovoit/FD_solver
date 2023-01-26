@@ -7,7 +7,7 @@ from scipy.sparse.linalg import spsolve
 from scipy.sparse import csc_matrix
 root_folder = os.getcwd()
 
-#pull one of the adges
+#change one edge
 def x_e(e, x0, v):
     return x0 + e*v
 
@@ -26,16 +26,23 @@ def m_grad(v,f):
     for fi in f:
          M_grad.append(torch.autograd.functional.jacobian(area,torch.tensor([v[fi[0]],v[fi[1]],v[fi[2]]])))
     return(M_grad)
-
-#angles and cot for one triangle
-def find_cot(a, b, c, Ai):
+    
+#sin for one triangle
+def find_sin(a,b,c,Ai):
     sina = (Ai)/(b*c)
-    sinb = (Ai)/(a*c);
-    sinc = (Ai)/(a*b);
+    sinb = (Ai)/(a*c)
+    sinc = (Ai)/(a*b)
+    return sina, sinb, sinc
+    
+#cos for one triangle
+def find_cos(a, b, c):
     cosa = (- a * a + b * b + c * c) / (2 * b * c)
     cosb = (- b * b + a * a + c * c) / (2 * a * c)
     cosc = (- c * c + a * a + b * b) / (2 * a * b)
-
+    return cosa, cosb, cosc
+    
+#cot for one triangle
+def find_cot(a, b, c, Ai):
     cota = (- a * a + b * b + c * c) / Ai
     cotb = (- b * b + a * a + c * c) / Ai
     cotc = (- c * c + a * a + b * b) / Ai
